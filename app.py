@@ -61,6 +61,9 @@ def bar_page():
     income = request.args.get('income')
     return render_template("bar.html", profession=profession, income=income)
 
+@app.route("/line")
+def line_page():
+    return render_template("line.html")
 
 # Returns json list of all professions from database
 # Information is returned from title column of wages table
@@ -171,6 +174,7 @@ def bar_chart():
                                                      "Experienced"]]
     if sample_data.empty:
         return jsonify({})
+
     data = {
         "Title": sample_data['Title'].values.tolist(),
         "Mean": sample_data['Mean'].values.tolist(),
@@ -179,21 +183,57 @@ def bar_chart():
     }
     return jsonify(data)
 
-# Zillow.csv code
-zillowfilepath = os.path.join(os.path.dirname(__file__),'db/zillow.csv')
-open_read = open(zillowfilepath,'r')
-page =''
+# Create our database model
+class rent(db.Model):
+    __tablename__ = 'rent'
 
-while True:
-    read_data = open_read.readline()
-    page += '<p>%s</p>' % read_data
-    if open_read.readline() == '':
-        break
+    RegionID = db.Column(db.Integer, primary_key=True)
+    City = db.Column(db.String)
+    Jan2016 = db.Column(db.Integer)
+    Jan2017 = db.Column(db.Integer)
+    Jan2018 = db.Column(db.Integer)
+
+@app.route("/linechart")
+def line_chart():
+
+    stmt = db.session.query(rent).statement
+    df = pd.read_sql_query(stmt, db.session.bind)
+    sample_data = df.loc[df['City'] == "New York", ["City",
+                                                    "Jan2016",
+                                                    "Jan2017",
+                                                    "Jan2018"]]
+    if sample_data.empty:
+        return jsonify({})
 
 
-@app.route("/readcsv")
-def read_csv():
-    return page
+    data = {
+        "City": sample_data['City'].values.tolist(),
+        "Jan2016": sample_data['Jan2016'].values.tolist(),
+        "Jan2017": sample_data['Jan2017'].values.tolist(),
+        "Jan2018": sample_data['Jan2018'].values.tolist()
+    }
+    return jsonify(data)  
+
+    traceA = {
+        "x": df["Jan2016"].values.tolist(),
+        "y": df["City"].values.tolist(),
+        "type": "scatter"
+    }
+    return jsonify(traceA)
+
+    traceB = {
+        "x": df["Jan2017"].values.tolist(),
+        "y": df["City"].values.tolist(),
+        "type": "scatter"
+    }
+    return jsonify(traceB)
+
+    traceC = {
+        "x": df["Jan2018"].values.tolist(),
+        "y": df["City"].values.tolist(),
+        "type": "scatter"
+    }
+    return jsonify(traceC)   
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
